@@ -1,4 +1,5 @@
 import tensorflow as tf
+from tensorflow.tools.graph_transforms import TransformGraph
 
 from imports.models import generator
 import os
@@ -32,5 +33,11 @@ if __name__ == '__main__':
         output_graph_def = convert_variables_to_constants(sess,  tf.get_default_graph().as_graph_def(),
                                                           ["outputs"])
 
+        input_names = ["inputs"]
+        output_names = ["outputs"]
+        transforms = ["strip_unused_nodes", "fold_batch_norms", "fold_constants", "quantize_weights"]
+        transformed_graph_def = TransformGraph(output_graph_def, input_names,
+                                               output_names, transforms)
+
         with tf.gfile.GFile(args.output_graph, "wb") as f:
-            f.write(output_graph_def.SerializeToString())
+            f.write(transformed_graph_def.SerializeToString())
