@@ -4,8 +4,10 @@ This repository contains implementation of [Pix2Pix](https://arxiv.org/abs/1611.
 
 # Train Results
 ![Train1](https://github.com/dikatok/images/blob/master/pix2pix-matting/train1.png)
-![Train1](https://github.com/dikatok/images/blob/master/pix2pix-matting/train2.png)
+![Train2](https://github.com/dikatok/images/blob/master/pix2pix-matting/train2.png)
 
 # Test Results
-![Train1](https://github.com/dikatok/images/blob/master/pix2pix-matting/test1.png)
-![Train1](https://github.com/dikatok/images/blob/master/pix2pix-matting/test2.png)
+![Test1](https://github.com/dikatok/images/blob/master/pix2pix-matting/test1.png)
+![Test2](https://github.com/dikatok/images/blob/master/pix2pix-matting/test2.png)
+
+# [Trained Model](https://drive.google.com/open?id=15usRWeLycXvuEn_5NYA6lsmsexGQYJ_x)
