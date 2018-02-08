@@ -4,6 +4,7 @@ from tensorflow.python.lib.io import file_io
 from imports.data_utils import create_one_shot_iterator, augment_dataset, create_initializable_iterator
 from imports.losses import discriminator_loss, generator_loss
 from imports.models import generator, discriminator
+from imports.metrics import iou
 import os
 import argparse
 
@@ -34,7 +35,7 @@ if __name__ == '__main__':
     num_test_samples = sum(1 for f in file_io.get_matching_files(test_files) 
                            for n in tf.python_io.tf_record_iterator(f))
     
-    num_epochs = 200
+    num_epochs = 200 * 2
 
     train_iterator = create_one_shot_iterator(train_files, train_batch_size, num_epoch=num_epochs)
     test_iterator = create_initializable_iterator(test_files, batch_size=num_test_samples)
@@ -55,41 +56,32 @@ if __name__ == '__main__':
     d_loss = discriminator_loss(d_logits, d_logits_, tf.ones_like(d), tf.zeros_like(d_))
     g_loss = generator_loss(d_logits_, tf.ones_like(d_), real_B, fake_B)
 
-    def iou(real_B, fake_B):
-        real_B_ones = tf.equal(real_B, 1)
-        fake_B_ones = tf.equal(fake_B, 1)
-        i = tf.cast(tf.logical_and(real_B_ones, fake_B_ones), dtype=tf.float32)
-        u = tf.cast(tf.logical_or(real_B_ones, fake_B_ones), dtype=tf.float32)
-        iou = tf.reduce_mean(tf.reduce_sum(i, axis=[1,2,3]) / tf.reduce_sum(u, axis=[1,2,3]))
-        return iou
-
     train_iou = iou(real_B, fake_B)
     test_iou = iou(test_B, fake_test_B)
 
     generator_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, "generator/")
     discriminator_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, "discriminator/")
-    all_trainable_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES)
 
-    d_op = tf.train.AdamOptimizer(learning_rate=1e-3).minimize(d_loss, var_list=discriminator_vars)
-    g_op = tf.train.AdamOptimizer(learning_rate=1e-3).minimize(g_loss, var_list=generator_vars)
+    d_op = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(d_loss, var_list=discriminator_vars)
+    g_op = tf.train.AdamOptimizer(learning_rate=1e-4).minimize(g_loss, var_list=generator_vars)
 
     summary = tf.summary.FileWriter(logdir=args.log_dir)
 
     g_loss_sum = tf.summary.scalar("g_loss", g_loss)
     d_loss_sum = tf.summary.scalar("d_loss", d_loss)
 
-    real_A_sum = tf.summary.image("real_A", real_A)
-    real_B_sum = tf.summary.image("real_B", real_B)
-    fake_B_sum = tf.summary.image("fake_B", fake_B)
+    real_A_sum = tf.summary.image("real_A", real_A, max_outputs=2)
+    real_B_sum = tf.summary.image("real_B", real_B * real_A, max_outputs=2)
+    fake_B_sum = tf.summary.image("fake_B", fake_B * real_A, max_outputs=2)
     image_sum = tf.summary.merge([real_A_sum, real_B_sum, fake_B_sum])
 
-    test_A_sum = tf.summary.image("test_A", test_A)
-    test_B_sum = tf.summary.image("test_B", test_B)
-    fake_test_B_sum = tf.summary.image("fake_test_B", fake_test_B)
+    test_A_sum = tf.summary.image("test_A", test_A, max_outputs=2)
+    test_B_sum = tf.summary.image("test_B", test_B * test_A, max_outputs=2)
+    fake_test_B_sum = tf.summary.image("fake_test_B", fake_test_B * test_A, max_outputs=2)
     test_image_sum = tf.summary.merge([test_A_sum, test_B_sum, fake_test_B_sum])
 
     train_iou_sum = tf.summary.scalar("train_iou", train_iou)
-    test_iou_sum = tf.summary.scalar("test_iou_sum", test_iou)
+    test_iou_sum = tf.summary.scalar("test_iou", test_iou)
 
     saver = tf.train.Saver(var_list=tf.trainable_variables())
 
@@ -116,24 +108,30 @@ if __name__ == '__main__':
 
             summary.add_summary(cur_d_loss_sum, it)
             summary.add_summary(cur_g_loss_sum, it)
+            summary.add_summary(cur_train_iou_sum, it)
 
-            if it % 500 == 0:
+            if it % 100 == 0:
                 summary.add_summary(cur_image_sum, it)
-                summary.add_summary(cur_train_iou_sum, it)
 
-            if it % 1000 == 0:
+            if it % 200 == 0:
                 sess.run(test_iterator.initializer)
                 cur_test_image_sum, cur_test_iou_sum = sess.run([test_image_sum, test_iou_sum])
                 summary.add_summary(cur_test_image_sum, it)
                 summary.add_summary(cur_test_iou_sum, it)
 
-            if it % 5000 == 0:
+            if it % 2000 == 0:
                 ckpt_path = saver.save(get_session(sess), save_path=os.path.join(args.ckpt_dir, "ckpt"),
                                        write_meta_graph=False, global_step=it)
                 print("Checkpoint saved as: {ckpt_path}".format(ckpt_path=ckpt_path))
 
             summary.flush()
             it += 1
+
+        sess.run(test_iterator.initializer)
+        cur_test_image_sum, cur_test_iou_sum = sess.run([test_image_sum, test_iou_sum])
+        summary.add_summary(cur_test_image_sum, it)
+        summary.add_summary(cur_test_iou_sum, it)
+        summary.flush()
 
         ckpt_path = saver.save(get_session(sess), save_path=os.path.join(args.ckpt_dir, "ckpt"),
                                write_meta_graph=False, global_step=it)
