@@ -10,4 +10,4 @@ This repository contains implementation of [Pix2Pix](https://arxiv.org/abs/1611.
 ![Test1](https://github.com/dikatok/images/blob/master/pix2pix-matting/test1.png)
 ![Test2](https://github.com/dikatok/images/blob/master/pix2pix-matting/test2.png)
 
-# [Trained Model](https://drive.google.com/open?id=15usRWeLycXvuEn_5NYA6lsmsexGQYJ_x)
+# [Trained Model](https://drive.google.com/open?id=1AyYQwHTXTeVN3aj4vCHLvzQtiY_0vXNm)
